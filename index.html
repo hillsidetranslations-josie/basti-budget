@@ -444,9 +444,10 @@ const state = {
   selectedCategory: null,
 };
 
-const SPENDING_CATS = ['gifts','travel','new phone','phone plan','debt repayment','personal spending','big ticket items','flagged'];
+const SPENDING_CATS = ['gifts','travel','new phone','phone plan','debt repayment','personal spending','big ticket items'];
 const SAVINGS_CATS  = ['savings','pension','isa','lifetime isa','kings wharf','child trust fund'];
 const UNALLOC_CATS  = ['savings'];
+const FLAGGED_CAT   = 'flagged';
 
 function parseSheetDate(str) {
   if (!str || !str.trim()) return null;
@@ -570,6 +571,7 @@ function renderTabBar() {
     { id: 'pots',       label: 'Pots',       icon: `<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>` },
     { id: 'history',    label: 'History',    icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>` },
     { id: 'categories', label: 'Categories', icon: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>` },
+    { id: 'flagged',    label: 'Flagged',    icon: `<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>` },
   ];
   return `
     <nav class="tab-bar">
@@ -597,6 +599,7 @@ function renderTabContent() {
   if (state.activeTab === 'pots')            html = renderPotsTab();
   else if (state.activeTab === 'history')    html = renderHistoryTab();
   else if (state.activeTab === 'categories') html = renderCategoriesTab();
+  else if (state.activeTab === 'flagged')    html = renderFlaggedTab();
 
   const ts = state.lastUpdated
     ? `<div class="last-updated">Updated ${state.lastUpdated.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}</div>`
@@ -607,7 +610,7 @@ function renderTabContent() {
 
 // ── Pots tab ───────────────────────────────────────────────────────────────
 function renderPotsTab() {
-  const nonWages = state.summary.filter(s => s.category.toLowerCase() !== 'wages');
+  const nonWages = state.summary.filter(s => s.category.toLowerCase() !== 'wages' && s.category.toLowerCase() !== FLAGGED_CAT);
   const total = nonWages.reduce((sum, s) => sum + s.balance, 0);
 
   function potCard(s, isSpending) {
@@ -625,7 +628,7 @@ function renderPotsTab() {
     return `<div class="pots-grid">${items.map(s => potCard(s, isSpending)).join('')}</div>`;
   }
 
-  const knownCats = new Set([...SPENDING_CATS, ...SAVINGS_CATS, 'wages']);
+  const knownCats = new Set([...SPENDING_CATS, ...SAVINGS_CATS, 'wages', FLAGGED_CAT]);
   const otherCats = state.summary.filter(s => !knownCats.has(s.category.toLowerCase()));
 
   const wages = state.summary.find(s => s.category.toLowerCase() === 'wages');
@@ -666,7 +669,7 @@ function renderHistoryTab() {
 
   const txns = state.selectedPayDay
     ? state.transactions
-        .filter(t => t.payDay.toDateString() === state.selectedPayDay.toDateString())
+        .filter(t => t.payDay.toDateString() === state.selectedPayDay.toDateString() && t.category.toLowerCase() !== FLAGGED_CAT)
         .sort((a, b) => b.activityDate - a.activityDate)
     : [];
 
@@ -783,7 +786,7 @@ function renderHistoryTab() {
 function renderCategoriesTab() {
   if (state.selectedCategory) return renderCategoryDetail(state.selectedCategory);
 
-  const items = state.summary.map(s => {
+  const items = state.summary.filter(s => s.category.toLowerCase() !== FLAGGED_CAT).map(s => {
     const color = balanceColor(s.balance);
     return `
       <div class="cat-item" data-cat="${s.category}">
@@ -826,6 +829,39 @@ function renderCategoryDetail(category) {
         <div class="hero-sub">${txns.length} transaction${txns.length !== 1 ? 's' : ''} across ${state.payDays.length} pay period${state.payDays.length !== 1 ? 's' : ''}</div>
       </div>` : ''}
     <div class="card"><div class="tx-list">${txHtml}</div></div>
+  `;
+}
+
+// ── Flagged tab ────────────────────────────────────────────────────────────
+function renderFlaggedTab() {
+  const flagged = state.transactions
+    .filter(t => t.category.toLowerCase() === FLAGGED_CAT)
+    .sort((a, b) => b.activityDate - a.activityDate);
+
+  if (!flagged.length) return `
+    <div class="empty-state" style="padding:48px 0">
+      <div style="font-size:32px;margin-bottom:8px">🏳</div>
+      No flagged items
+    </div>`;
+
+  const total = Math.abs(flagged.reduce((s, t) => s + t.amount, 0));
+
+  const items = flagged.map(t => `
+    <div class="tx-item">
+      <div class="tx-info">
+        <div class="tx-name">${t.item || '(no description)'}</div>
+        <div class="tx-meta">${fmt(t.activityDate)} · pay ${fmtShort(t.payDay)}</div>
+      </div>
+      <div class="tx-amount ${t.amount >= 0 ? 'balance-positive' : 'balance-negative'}">${fmtAmount(t.amount)}</div>
+    </div>`).join('');
+
+  return `
+    <div class="hero-card">
+      <div class="hero-label">Flagged · needs allocation</div>
+      <div class="hero-amount">${fmtAmount(total)}</div>
+      <div class="hero-sub">${flagged.length} item${flagged.length !== 1 ? 's' : ''} to review</div>
+    </div>
+    <div class="card">${items}</div>
   `;
 }
 
