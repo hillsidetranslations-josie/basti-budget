@@ -444,7 +444,7 @@ const state = {
   selectedCategory: null,
 };
 
-const SPENDING_CATS = ['gifts','travel','new phone','phone plan','debt repayment','personal spending','big ticket items'];
+const SPENDING_CATS = ['gifts','travel','new phone','phone plan','debt repayment','personal spending','big ticket items','flagged'];
 const SAVINGS_CATS  = ['savings','pension','isa','lifetime isa','kings wharf','child trust fund'];
 const UNALLOC_CATS  = ['savings'];
 
@@ -625,12 +625,19 @@ function renderPotsTab() {
     return `<div class="pots-grid">${items.map(s => potCard(s, isSpending)).join('')}</div>`;
   }
 
+  const knownCats = new Set([...SPENDING_CATS, ...SAVINGS_CATS, 'wages']);
+  const otherCats = state.summary.filter(s => !knownCats.has(s.category.toLowerCase()));
+
   const wages = state.summary.find(s => s.category.toLowerCase() === 'wages');
   const wagesHtml = wages ? `
     <div class="wages-row">
       <span>Wages · fully allocated</span>
       <span>${fmtAmount(wages.balance)}</span>
     </div>` : '';
+
+  const otherHtml = otherCats.length ? `
+    <div class="section-label">Other</div>
+    <div class="pots-grid">${otherCats.map(s => potCard(s, false)).join('')}</div>` : '';
 
   return `
     <div class="hero-card">
@@ -645,6 +652,7 @@ function renderPotsTab() {
     <div class="section-label">Savings &amp; investments</div>
     ${grid(SAVINGS_CATS)}
 
+    ${otherHtml}
     ${wagesHtml}
   `;
 }
@@ -666,16 +674,20 @@ function renderHistoryTab() {
   const savingsAlloc = txns.filter(t => SAVINGS_CATS.includes(t.category.toLowerCase()) && t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const actualSpend  = txns.filter(t => t.category.toLowerCase() !== 'wages' && t.amount < 0).reduce((s, t) => s + t.amount, 0);
 
-  // Split spending allocations: portion covering a negative balance = debt repayment, rest = to spending
-  const spendCatTotals = {};
-  txns.filter(t => SPENDING_CATS.includes(t.category.toLowerCase()) && t.amount > 0).forEach(t => {
-    spendCatTotals[t.category] = (spendCatTotals[t.category] || 0) + t.amount;
+  // Split spending allocations: portion covering a pre-period deficit = debt repayment, rest = to spending
+  // balanceBefore = currentAllTimeBalance - net of ALL this period's transactions for that category
+  const spendCatPeriod = {};
+  txns.filter(t => SPENDING_CATS.includes(t.category.toLowerCase())).forEach(t => {
+    if (!spendCatPeriod[t.category]) spendCatPeriod[t.category] = { allocated: 0, net: 0 };
+    if (t.amount > 0) spendCatPeriod[t.category].allocated += t.amount;
+    spendCatPeriod[t.category].net += t.amount;
   });
   let toSpending = 0, toDebtRepayment = 0;
-  Object.entries(spendCatTotals).forEach(([cat, allocated]) => {
+  Object.entries(spendCatPeriod).forEach(([cat, { allocated, net }]) => {
+    if (allocated === 0) return;
     const summary = state.summary.find(s => s.category === cat);
     const currentBalance = summary ? summary.balance : 0;
-    const balanceBefore = currentBalance - allocated;
+    const balanceBefore = currentBalance - net;
     if (balanceBefore < 0) {
       const debtCovered = Math.min(allocated, Math.abs(balanceBefore));
       toDebtRepayment += debtCovered;
