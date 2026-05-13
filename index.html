@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Budget Pots</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F0F2FA;
+      --card: #FFFFFF;
+      --primary: #4338CA;
+      --primary-mid: #6366F1;
+      --primary-light: #EEF2FF;
+      --text: #111827;
+      --text-2: #6B7280;
+      --text-3: #9CA3AF;
+      --green: #16A34A;
+      --green-bg: #DCFCE7;
+      --red: #DC2626;
+      --red-bg: #FEE2E2;
+      --amber: #D97706;
+      --amber-bg: #FEF3C7;
+      --border: #E5E7EB;
+      --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+      --radius: 16px;
+      --radius-sm: 12px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-mid) 100%);
+      color: white;
+      padding: 20px 20px 20px;
+      padding-top: max(20px, calc(env(safe-area-inset-top) + 12px));
+    }
+    .header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .app-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+    .app-header .subtitle { font-size: 13px; opacity: 0.75; margin-top: 3px; }
+
+    .refresh-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: white;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .refresh-btn:active { background: rgba(255,255,255,0.35); }
+    .refresh-btn.spinning svg { animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 100;
+    }
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0 8px;
+      border: none;
+      background: none;
+      color: var(--text-3);
+      font-size: 10px;
+      font-weight: 600;
+      font-family: inherit;
+      gap: 4px;
+      cursor: pointer;
+      transition: color 0.15s;
+      letter-spacing: 0.2px;
+    }
+    .tab-btn.active { color: var(--primary); }
+    .tab-btn svg { width: 22px; height: 22px; }
+
+    /* ── Content ── */
+    .content {
+      padding: 16px;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      margin: 20px 0 8px;
+    }
+    .section-label:first-child { margin-top: 4px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 10px;
+    }
+
+    /* ── Summary hero card ── */
+    .hero-card {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-mid) 100%);
+      color: white;
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      margin-bottom: 10px;
+    }
+    .hero-card .hero-label { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+    .hero-card .hero-amount { font-size: 40px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
+    .hero-card .hero-sub { font-size: 13px; opacity: 0.75; margin-top: 6px; }
+
+    /* ── Pots grid ── */
+    .pots-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .pot-card {
+      background: var(--card);
+      border-radius: var(--radius-sm);
+      padding: 14px 12px;
+      box-shadow: var(--shadow);
+    }
+    .pot-card .pot-name {
+      font-size: 11px;
+      color: var(--text-2);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pot-card .pot-balance {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .pot-card .pot-note {
+      font-size: 10px;
+      color: var(--amber);
+      font-weight: 500;
+      margin-top: 3px;
+    }
+    .balance-positive { color: var(--green); }
+    .balance-zero     { color: var(--text-3); }
+    .balance-negative { color: var(--red); }
+    .balance-amber    { color: var(--amber); }
+
+    /* ── Wages chip ── */
+    .wages-row {
+      background: var(--card);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      opacity: 0.6;
+      margin-top: 8px;
+    }
+    .wages-row span:first-child { font-size: 13px; font-weight: 500; }
+    .wages-row span:last-child { font-size: 13px; font-weight: 700; }
+
+    /* ── Transaction list ── */
+    .tx-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+    .tx-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tx-meta { font-size: 11px; color: var(--text-2); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .tx-amount { font-size: 15px; font-weight: 700; text-align: right; white-space: nowrap; letter-spacing: -0.3px; }
+
+    /* ── Category chip ── */
+    .chip {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: 0.1px;
+    }
+
+    /* ── Select ── */
+    .select-wrap { position: relative; margin-bottom: 12px; }
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--text-2);
+      border-bottom: none;
+      pointer-events: none;
+    }
+    select {
+      width: 100%;
+      appearance: none;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 36px 12px 14px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    select:focus { outline: none; border-color: var(--primary); }
+
+    /* ── Cycle stats ── */
+    .cycle-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .stat-card {
+      background: var(--card);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .stat-card .stat-label { font-size: 10px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.6px; }
+    .stat-card .stat-val { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-top: 4px; }
+
+    /* ── Category list ── */
+    .cat-item {
+      display: flex;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cat-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .cat-item:active { opacity: 0.7; }
+    .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name { flex: 1; font-size: 15px; font-weight: 500; }
+    .cat-balance { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--primary);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 0 0 14px;
+    }
+
+    /* ── Setup screen ── */
+    .setup-screen {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .setup-icon {
+      width: 80px; height: 80px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-mid));
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 8px 24px rgba(67,56,202,0.3);
+    }
+    .setup-screen h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .setup-screen p { color: var(--text-2); font-size: 15px; line-height: 1.55; margin-bottom: 24px; max-width: 340px; }
+    .steps {
+      text-align: left;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 4px 16px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--shadow);
+    }
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 22px; height: 22px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-text { font-size: 13px; line-height: 1.5; color: var(--text); }
+    .step-text strong { color: var(--primary); }
+    .url-input {
+      width: 100%; max-width: 400px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 13px 14px;
+      font-size: 13px;
+      font-family: monospace;
+      margin-bottom: 10px;
+      outline: none;
+      color: var(--text);
+      background: var(--card);
+    }
+    .url-input:focus { border-color: var(--primary); }
+    .btn-primary {
+      width: 100%; max-width: 400px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-mid));
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: -0.2px;
+    }
+    .btn-primary:active { opacity: 0.85; }
+    .setup-note {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--text-3);
+      max-width: 340px;
+    }
+    .reset-link {
+      display: inline;
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    /* ── States ── */
+    .loading-state { display: flex; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text-2); font-size: 14px; gap: 10px; }
+    .loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: pulse 1s ease-in-out infinite; }
+    .loading-dot:nth-child(2) { animation-delay: 0.15s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes pulse { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+    .error-banner { background: var(--red-bg); color: var(--red); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; margin-bottom: 12px; font-weight: 500; }
+    .last-updated { font-size: 11px; color: var(--text-3); text-align: center; padding: 12px 0 4px; }
+    .empty-state { color: var(--text-3); font-size: 14px; padding: 16px 0; text-align: center; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  sheetUrl: localStorage.getItem('budgetSheetUrl') || '',
+  transactions: [],
+  summary: [],
+  payDays: [],
+  lastUpdated: null,
+  loading: false,
+  error: null,
+  activeTab: 'pots',
+  selectedPayDay: null,
+  selectedCategory: null,
+};
+
+const SPENDING_CATS = ['gifts','travel','new phone','phone plan','debt repayment','personal spending','big ticket items'];
+const SAVINGS_CATS  = ['savings','pension','isa','lifetime isa','kings wharf','child trust fund'];
+const UNALLOC_CATS  = ['savings'];
+
+function parseSheetDate(str) {
+  if (!str || !str.trim()) return null;
+  const d = new Date(str.trim());
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmt(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function fmtShort(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function fmtAmount(n) {
+  if (n === null || n === undefined) return '';
+  return (n < 0 ? '-' : '') + '£' + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function balanceClass(n) {
+  if (n === null || n === undefined) return '';
+  if (n > 0) return 'balance-positive';
+  if (n < 0) return 'balance-negative';
+  return 'balance-zero';
+}
+
+function balanceColor(n) {
+  if (n > 0) return 'var(--green)';
+  if (n < 0) return 'var(--red)';
+  return 'var(--text-3)';
+}
+
+// ── Data fetching ──────────────────────────────────────────────────────────
+async function fetchData() {
+  if (!state.sheetUrl) return;
+
+  state.loading = true;
+  state.error = null;
+  const btn = document.getElementById('refreshBtn');
+  if (btn) btn.classList.add('spinning');
+  render();
+
+  try {
+    const url = state.sheetUrl + (state.sheetUrl.includes('?') ? '&' : '?') + '_cache=' + Date.now();
+    const resp = await fetch(url);
+    const data = await resp.json();
+    processData(data);
+    state.lastUpdated = new Date();
+    state.error = null;
+  } catch (e) {
+    state.error = 'Could not load data. Check the Apps Script URL is correct and deployed as "Anyone".';
+  }
+
+  state.loading = false;
+  render();
+}
+
+function processData(data) {
+  // Transactions come as objects with string dates from Apps Script
+  state.transactions = (data.transactions || []).map(t => ({
+    payDay:       parseSheetDate(t.payDay),
+    activityDate: parseSheetDate(t.activityDate),
+    item:         t.item,
+    category:     t.category,
+    amount:       t.amount,
+  })).filter(t => t.payDay);
+
+  // Summary comes as { CategoryName: balance }
+  state.summary = Object.entries(data.summary || {}).map(([category, balance]) => ({ category, balance }));
+
+  // Fall back to computing from transactions if summary is empty
+  if (state.summary.length === 0) {
+    const map = {};
+    state.transactions.forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
+    state.summary = Object.entries(map).map(([category, balance]) => ({ category, balance }));
+  }
+
+  const seen = new Set();
+  state.payDays = state.transactions
+    .filter(t => { const k = t.payDay.toDateString(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .map(t => t.payDay)
+    .sort((a, b) => b - a);
+
+  if (!state.selectedPayDay || !state.payDays.some(d => d.toDateString() === state.selectedPayDay.toDateString())) {
+    state.selectedPayDay = state.payDays[0] || null;
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  if (!state.sheetUrl) {
+    app.innerHTML = renderSetup();
+    bindSetup();
+    return;
+  }
+  app.innerHTML = renderHeader() + `<div class="content">` + renderTabContent() + `</div>` + renderTabBar();
+  bindEvents();
+}
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+function renderSetup() {
+  return `
+    <div class="setup-screen">
+      <div class="setup-icon">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </div>
+      <h1>Budget Pots</h1>
+      <p>Paste the Apps Script web app URL to connect your Google Sheet.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">In your Google Sheet: <strong>Extensions → Apps Script</strong></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">Paste the script, then <strong>Deploy → New deployment → Web app</strong></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">Set access to <strong>Anyone</strong>, deploy, and paste the URL below</div>
+        </div>
+      </div>
+      <input class="url-input" id="sheetUrlInput" type="url" placeholder="https://script.google.com/macros/s/...">
+      <button class="btn-primary" id="saveUrlBtn">Connect</button>
+      <p class="setup-note">The URL is saved on this device only. Basti will need to enter it once on his phone.</p>
+    </div>
+  `;
+}
+
+function bindSetup() {
+  document.getElementById('saveUrlBtn').addEventListener('click', () => {
+    const url = document.getElementById('sheetUrlInput').value.trim();
+    if (!url) return;
+    state.sheetUrl = url;
+    localStorage.setItem('budgetSheetUrl', url);
+    fetchData();
+  });
+}
+
+// ── Header ─────────────────────────────────────────────────────────────────
+function renderHeader() {
+  const label = state.payDays[0] ? 'Pay from ' + fmt(state.payDays[0]) : 'Loading…';
+  return `
+    <div class="app-header">
+      <div class="header-row">
+        <div>
+          <h1>Budget Pots</h1>
+          <div class="subtitle">${label}</div>
+        </div>
+        <button class="refresh-btn" id="refreshBtn" title="Refresh">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Tab bar ────────────────────────────────────────────────────────────────
+function renderTabBar() {
+  const tabs = [
+    { id: 'pots',       label: 'Pots',       icon: `<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>` },
+    { id: 'history',    label: 'History',    icon: `<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>` },
+    { id: 'categories', label: 'Categories', icon: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>` },
+  ];
+  return `
+    <nav class="tab-bar">
+      ${tabs.map(t => `
+        <button class="tab-btn${state.activeTab === t.id ? ' active' : ''}" data-tab="${t.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
+          ${t.label}
+        </button>
+      `).join('')}
+    </nav>
+  `;
+}
+
+// ── Tab content ────────────────────────────────────────────────────────────
+function renderTabContent() {
+  if (state.loading) return `
+    <div class="loading-state">
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+    </div>`;
+  if (state.error) return `<div class="error-banner">⚠ ${state.error}</div>`;
+
+  let html = '';
+  if (state.activeTab === 'pots')            html = renderPotsTab();
+  else if (state.activeTab === 'history')    html = renderHistoryTab();
+  else if (state.activeTab === 'categories') html = renderCategoriesTab();
+
+  const ts = state.lastUpdated
+    ? `<div class="last-updated">Updated ${state.lastUpdated.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}
+        &nbsp;·&nbsp;<button class="reset-link" id="resetLink">Change sheet</button></div>`
+    : '';
+
+  return html + ts;
+}
+
+// ── Pots tab ───────────────────────────────────────────────────────────────
+function renderPotsTab() {
+  const nonWages = state.summary.filter(s => s.category.toLowerCase() !== 'wages');
+  const total = nonWages.reduce((sum, s) => sum + s.balance, 0);
+
+  function potCard(s) {
+    const isUnalloc = UNALLOC_CATS.includes(s.category.toLowerCase());
+    const cls = isUnalloc ? 'balance-amber' : balanceClass(s.balance);
+    const note = isUnalloc ? '<div class="pot-note">Awaiting allocation</div>' : '';
+    return `<div class="pot-card"><div class="pot-name">${s.category}</div><div class="pot-balance ${cls}">${fmtAmount(s.balance)}</div>${note}</div>`;
+  }
+
+  function grid(keys) {
+    const items = state.summary.filter(s => keys.includes(s.category.toLowerCase()));
+    if (!items.length) return `<p class="empty-state">No data yet</p>`;
+    return `<div class="pots-grid">${items.map(potCard).join('')}</div>`;
+  }
+
+  const wages = state.summary.find(s => s.category.toLowerCase() === 'wages');
+  const wagesHtml = wages ? `
+    <div class="wages-row">
+      <span>Wages · fully allocated</span>
+      <span>${fmtAmount(wages.balance)}</span>
+    </div>` : '';
+
+  return `
+    <div class="hero-card">
+      <div class="hero-label">Total across all pots</div>
+      <div class="hero-amount">${fmtAmount(total)}</div>
+      <div class="hero-sub">${state.payDays.length} pay period${state.payDays.length !== 1 ? 's' : ''} · ${state.summary.length} categories</div>
+    </div>
+
+    <div class="section-label">Spending pots</div>
+    ${grid(SPENDING_CATS)}
+
+    <div class="section-label">Savings &amp; investments</div>
+    ${grid(SAVINGS_CATS)}
+
+    ${wagesHtml}
+  `;
+}
+
+// ── History tab ────────────────────────────────────────────────────────────
+function renderHistoryTab() {
+  const options = state.payDays.map(d => {
+    const sel = state.selectedPayDay && d.toDateString() === state.selectedPayDay.toDateString() ? ' selected' : '';
+    return `<option value="${d.toISOString()}"${sel}>Pay: ${fmt(d)}</option>`;
+  }).join('');
+
+  const txns = state.selectedPayDay
+    ? state.transactions
+        .filter(t => t.payDay.toDateString() === state.selectedPayDay.toDateString())
+        .sort((a, b) => a.activityDate - b.activityDate)
+    : [];
+
+  const wagesIn  = txns.filter(t => t.category.toLowerCase() === 'wages' && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const totalOut = txns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+
+  const txHtml = txns.length ? txns.map(t => `
+    <div class="tx-item">
+      <div class="tx-info">
+        <div class="tx-name">${t.item || t.category}</div>
+        <div class="tx-meta">
+          ${fmtShort(t.activityDate)}
+          <span class="chip">${t.category}</span>
+        </div>
+      </div>
+      <div class="tx-amount ${t.amount >= 0 ? 'balance-positive' : 'balance-negative'}">${fmtAmount(t.amount)}</div>
+    </div>
+  `).join('') : `<div class="empty-state">No transactions for this period</div>`;
+
+  const statsHtml = wagesIn ? `
+    <div class="cycle-stats">
+      <div class="stat-card">
+        <div class="stat-label">Wages in</div>
+        <div class="stat-val balance-positive">${fmtAmount(wagesIn)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Allocated out</div>
+        <div class="stat-val balance-negative">${fmtAmount(Math.abs(totalOut))}</div>
+      </div>
+    </div>` : '';
+
+  return `
+    <div class="select-wrap">
+      <select id="payDaySelect">${options}</select>
+    </div>
+    ${statsHtml}
+    <div class="card"><div class="tx-list">${txHtml}</div></div>
+  `;
+}
+
+// ── Categories tab ─────────────────────────────────────────────────────────
+function renderCategoriesTab() {
+  if (state.selectedCategory) return renderCategoryDetail(state.selectedCategory);
+
+  const items = state.summary.map(s => {
+    const color = balanceColor(s.balance);
+    return `
+      <div class="cat-item" data-cat="${s.category}">
+        <div class="cat-dot" style="background:${color}"></div>
+        <div class="cat-name">${s.category}</div>
+        <div class="cat-balance" style="color:${color}">${fmtAmount(s.balance)}</div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`;
+  }).join('');
+
+  return `<div class="card">${items || '<div class="empty-state">No categories found</div>'}</div>`;
+}
+
+function renderCategoryDetail(category) {
+  const txns = state.transactions
+    .filter(t => t.category === category)
+    .sort((a, b) => b.activityDate - a.activityDate);
+
+  const bal = state.summary.find(s => s.category === category);
+  const color = bal ? balanceColor(bal.balance) : 'var(--text-3)';
+
+  const txHtml = txns.map(t => `
+    <div class="tx-item">
+      <div class="tx-info">
+        <div class="tx-name">${t.item || t.category}</div>
+        <div class="tx-meta">${fmt(t.activityDate)} · pay ${fmtShort(t.payDay)}</div>
+      </div>
+      <div class="tx-amount ${t.amount >= 0 ? 'balance-positive' : 'balance-negative'}">${fmtAmount(t.amount)}</div>
+    </div>`).join('') || `<div class="empty-state">No transactions</div>`;
+
+  return `
+    <button class="back-btn" id="backBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      All Categories
+    </button>
+    ${bal ? `
+      <div class="hero-card" style="margin-bottom:10px">
+        <div class="hero-label">${category}</div>
+        <div class="hero-amount">${fmtAmount(bal.balance)}</div>
+        <div class="hero-sub">${txns.length} transaction${txns.length !== 1 ? 's' : ''} across ${state.payDays.length} pay period${state.payDays.length !== 1 ? 's' : ''}</div>
+      </div>` : ''}
+    <div class="card"><div class="tx-list">${txHtml}</div></div>
+  `;
+}
+
+// ── Bind events ────────────────────────────────────────────────────────────
+function bindEvents() {
+  document.getElementById('refreshBtn')?.addEventListener('click', fetchData);
+
+  document.querySelectorAll('.tab-btn').forEach(btn =>
+    btn.addEventListener('click', () => {
+      state.activeTab = btn.dataset.tab;
+      state.selectedCategory = null;
+      render();
+    })
+  );
+
+  document.getElementById('payDaySelect')?.addEventListener('change', e => {
+    state.selectedPayDay = new Date(e.target.value);
+    render();
+  });
+
+  document.querySelectorAll('.cat-item').forEach(el =>
+    el.addEventListener('click', () => {
+      state.selectedCategory = el.dataset.cat;
+      render();
+    })
+  );
+
+  document.getElementById('backBtn')?.addEventListener('click', () => {
+    state.selectedCategory = null;
+    render();
+  });
+
+  document.getElementById('resetLink')?.addEventListener('click', () => {
+    if (confirm('Disconnect this sheet and enter a new URL?')) {
+      state.sheetUrl = '';
+      localStorage.removeItem('budgetSheetUrl');
+      render();
+    }
+  });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+render();
+if (state.sheetUrl) {
+  fetchData();
+  setInterval(fetchData, 5 * 60 * 1000);
+}
+</script>
+</body>
+</html>
