@@ -272,6 +272,20 @@
     .stat-card .stat-label { font-size: 10px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.6px; }
     .stat-card .stat-val { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-top: 4px; }
 
+    /* ── Period category breakdown ── */
+    .period-cat {
+      display: flex;
+      align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+    .period-cat:last-child { border-bottom: none; padding-bottom: 0; }
+    .period-cat-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .period-cat-in { font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
+    .period-cat-bal { font-size: 13px; font-weight: 700; white-space: nowrap; text-align: right; min-width: 64px; }
+    .period-cat-bal-label { font-size: 10px; color: var(--text-3); text-align: right; }
+
     /* ── Category list ── */
     .cat-item {
       display: flex;
@@ -692,11 +706,58 @@ function renderHistoryTab() {
   const txns = state.selectedPayDay
     ? state.transactions
         .filter(t => t.payDay.toDateString() === state.selectedPayDay.toDateString())
-        .sort((a, b) => a.activityDate - b.activityDate)
+        .sort((a, b) => b.activityDate - a.activityDate)
     : [];
 
-  const wagesIn     = txns.filter(t => t.category.toLowerCase() === 'wages' && t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const actualSpend = txns.filter(t => t.category.toLowerCase() !== 'wages' && t.amount < 0).reduce((s, t) => s + t.amount, 0);
+  const wagesIn      = txns.filter(t => t.category.toLowerCase() === 'wages' && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const savingsAlloc = txns.filter(t => SAVINGS_CATS.includes(t.category.toLowerCase()) && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const spendAlloc   = txns.filter(t => SPENDING_CATS.includes(t.category.toLowerCase()) && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const actualSpend  = txns.filter(t => t.category.toLowerCase() !== 'wages' && t.amount < 0).reduce((s, t) => s + t.amount, 0);
+
+  // Per-category allocation breakdown for this period
+  const catAllocMap = {};
+  txns.filter(t => t.category.toLowerCase() !== 'wages' && t.amount > 0).forEach(t => {
+    catAllocMap[t.category] = (catAllocMap[t.category] || 0) + t.amount;
+  });
+  const catBreakdown = Object.entries(catAllocMap).map(([cat, allocated]) => {
+    const summary = state.summary.find(s => s.category === cat);
+    const balance = summary ? summary.balance : 0;
+    return { cat, allocated, balance };
+  });
+
+  const catBreakdownHtml = catBreakdown.length ? `
+    <div class="section-label">Allocated this period</div>
+    <div class="card">
+      ${catBreakdown.map(r => `
+        <div class="period-cat">
+          <div class="period-cat-name">${r.cat}</div>
+          <div style="text-align:right">
+            <div class="period-cat-in">+${fmtAmount(r.allocated)}</div>
+            <div class="period-cat-bal-label">balance ${fmtAmount(r.balance)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : '';
+
+  const statsHtml = wagesIn ? `
+    <div class="cycle-stats">
+      <div class="stat-card">
+        <div class="stat-label">Wages in</div>
+        <div class="stat-val balance-positive">${fmtAmount(wagesIn)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Spent</div>
+        <div class="stat-val ${actualSpend < 0 ? 'balance-negative' : 'balance-zero'}">${fmtAmount(Math.abs(actualSpend))}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">To savings</div>
+        <div class="stat-val balance-positive">${fmtAmount(savingsAlloc)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">To spending</div>
+        <div class="stat-val balance-positive">${fmtAmount(spendAlloc)}</div>
+      </div>
+    </div>` : '';
 
   const txHtml = txns.length ? txns.map(t => `
     <div class="tx-item">
@@ -711,23 +772,13 @@ function renderHistoryTab() {
     </div>
   `).join('') : `<div class="empty-state">No transactions for this period</div>`;
 
-  const statsHtml = wagesIn ? `
-    <div class="cycle-stats">
-      <div class="stat-card">
-        <div class="stat-label">Wages in</div>
-        <div class="stat-val balance-positive">${fmtAmount(wagesIn)}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Spent</div>
-        <div class="stat-val balance-negative">${fmtAmount(Math.abs(actualSpend))}</div>
-      </div>
-    </div>` : '';
-
   return `
     <div class="select-wrap">
       <select id="payDaySelect">${options}</select>
     </div>
     ${statsHtml}
+    ${catBreakdownHtml}
+    <div class="section-label">Transactions</div>
     <div class="card"><div class="tx-list">${txHtml}</div></div>
   `;
 }
