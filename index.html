@@ -428,9 +428,11 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzrw7kOoLwZMQ58iqNobP5lnASRWGCkr8ilGKWJQMkFkFJLraxSGClMA4qOY5ACld5Eog/exec';
+
 const state = {
-  sheetUrl: localStorage.getItem('budgetSheetUrl') || '',
   transactions: [],
+  // sheetUrl removed — hardcoded above
   summary: [],
   payDays: [],
   lastUpdated: null,
@@ -481,8 +483,6 @@ function balanceColor(n) {
 
 // ── Data fetching ──────────────────────────────────────────────────────────
 async function fetchData() {
-  if (!state.sheetUrl) return;
-
   state.loading = true;
   state.error = null;
   const btn = document.getElementById('refreshBtn');
@@ -490,7 +490,7 @@ async function fetchData() {
   render();
 
   try {
-    const url = state.sheetUrl + (state.sheetUrl.includes('?') ? '&' : '?') + '_cache=' + Date.now();
+    const url = SHEET_URL + '?_cache=' + Date.now();
     const resp = await fetch(url);
     const data = await resp.json();
     processData(data);
@@ -538,55 +538,8 @@ function processData(data) {
 // ── Render ─────────────────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
-  if (!state.sheetUrl) {
-    app.innerHTML = renderSetup();
-    bindSetup();
-    return;
-  }
   app.innerHTML = renderHeader() + `<div class="content">` + renderTabContent() + `</div>` + renderTabBar();
   bindEvents();
-}
-
-// ── Setup ──────────────────────────────────────────────────────────────────
-function renderSetup() {
-  return `
-    <div class="setup-screen">
-      <div class="setup-icon">
-        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-      </div>
-      <h1>Budget Pots</h1>
-      <p>Paste the Apps Script web app URL to connect your Google Sheet.</p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-text">In your Google Sheet: <strong>Extensions → Apps Script</strong></div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-text">Paste the script, then <strong>Deploy → New deployment → Web app</strong></div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-text">Set access to <strong>Anyone</strong>, deploy, and paste the URL below</div>
-        </div>
-      </div>
-      <input class="url-input" id="sheetUrlInput" type="url" placeholder="https://script.google.com/macros/s/...">
-      <button class="btn-primary" id="saveUrlBtn">Connect</button>
-      <p class="setup-note">The URL is saved on this device only. Basti will need to enter it once on his phone.</p>
-    </div>
-  `;
-}
-
-function bindSetup() {
-  document.getElementById('saveUrlBtn').addEventListener('click', () => {
-    const url = document.getElementById('sheetUrlInput').value.trim();
-    if (!url) return;
-    state.sheetUrl = url;
-    localStorage.setItem('budgetSheetUrl', url);
-    fetchData();
-  });
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────
@@ -645,8 +598,7 @@ function renderTabContent() {
   else if (state.activeTab === 'categories') html = renderCategoriesTab();
 
   const ts = state.lastUpdated
-    ? `<div class="last-updated">Updated ${state.lastUpdated.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}
-        &nbsp;·&nbsp;<button class="reset-link" id="resetLink">Change sheet</button></div>`
+    ? `<div class="last-updated">Updated ${state.lastUpdated.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}</div>`
     : '';
 
   return html + ts;
@@ -862,21 +814,12 @@ function bindEvents() {
     render();
   });
 
-  document.getElementById('resetLink')?.addEventListener('click', () => {
-    if (confirm('Disconnect this sheet and enter a new URL?')) {
-      state.sheetUrl = '';
-      localStorage.removeItem('budgetSheetUrl');
-      render();
-    }
-  });
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
 render();
-if (state.sheetUrl) {
-  fetchData();
-  setInterval(fetchData, 5 * 60 * 1000);
-}
+fetchData();
+setInterval(fetchData, 5 * 60 * 1000);
 </script>
 </body>
 </html>
