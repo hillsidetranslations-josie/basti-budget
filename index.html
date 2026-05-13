@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { max-width: 100%; overflow-x: hidden; }
 
     :root {
       --bg: #F0F2FA;
@@ -677,6 +678,7 @@ function renderHistoryTab() {
     return { cat, allocated, balance };
   });
 
+  const totalAllocated = catBreakdown.reduce((s, r) => s + r.allocated, 0);
   const catBreakdownHtml = catBreakdown.length ? `
     <div class="section-label">Allocated this period</div>
     <div class="card">
@@ -689,6 +691,13 @@ function renderHistoryTab() {
           </div>
         </div>
       `).join('')}
+      <div class="period-cat" style="border-top:2px solid var(--border);margin-top:4px;padding-top:13px;border-bottom:none">
+        <div class="period-cat-name" style="font-weight:700">Total allocated</div>
+        <div style="text-align:right">
+          <div class="period-cat-in" style="font-size:15px">+${fmtAmount(totalAllocated)}</div>
+          ${wagesIn ? `<div class="period-cat-bal-label">${fmtAmount(wagesIn - totalAllocated)} unallocated</div>` : ''}
+        </div>
+      </div>
     </div>` : '';
 
   const statsHtml = wagesIn ? `
