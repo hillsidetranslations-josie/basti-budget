@@ -643,17 +643,19 @@ function renderPotsTab() {
   const nonWages = state.summary.filter(s => s.category.toLowerCase() !== 'wages');
   const total = nonWages.reduce((sum, s) => sum + s.balance, 0);
 
-  function potCard(s) {
+  function potCard(s, isSpending) {
     const isUnalloc = UNALLOC_CATS.includes(s.category.toLowerCase());
     const cls = isUnalloc ? 'balance-amber' : balanceClass(s.balance);
-    const note = isUnalloc ? '<div class="pot-note">Awaiting allocation</div>' : '';
+    const note = isUnalloc
+      ? '<div class="pot-note">Awaiting allocation</div>'
+      : (isSpending && s.balance > 0 ? '<div class="pot-note" style="color:var(--text-3)">available to spend</div>' : '');
     return `<div class="pot-card"><div class="pot-name">${s.category}</div><div class="pot-balance ${cls}">${fmtAmount(s.balance)}</div>${note}</div>`;
   }
 
-  function grid(keys) {
+  function grid(keys, isSpending = false) {
     const items = state.summary.filter(s => keys.includes(s.category.toLowerCase()));
     if (!items.length) return `<p class="empty-state">No data yet</p>`;
-    return `<div class="pots-grid">${items.map(potCard).join('')}</div>`;
+    return `<div class="pots-grid">${items.map(s => potCard(s, isSpending)).join('')}</div>`;
   }
 
   const wages = state.summary.find(s => s.category.toLowerCase() === 'wages');
@@ -671,7 +673,7 @@ function renderPotsTab() {
     </div>
 
     <div class="section-label">Spending pots</div>
-    ${grid(SPENDING_CATS)}
+    ${grid(SPENDING_CATS, true)}
 
     <div class="section-label">Savings &amp; investments</div>
     ${grid(SAVINGS_CATS)}
@@ -693,8 +695,8 @@ function renderHistoryTab() {
         .sort((a, b) => a.activityDate - b.activityDate)
     : [];
 
-  const wagesIn  = txns.filter(t => t.category.toLowerCase() === 'wages' && t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const totalOut = txns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+  const wagesIn     = txns.filter(t => t.category.toLowerCase() === 'wages' && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const actualSpend = txns.filter(t => t.category.toLowerCase() !== 'wages' && t.amount < 0).reduce((s, t) => s + t.amount, 0);
 
   const txHtml = txns.length ? txns.map(t => `
     <div class="tx-item">
@@ -716,8 +718,8 @@ function renderHistoryTab() {
         <div class="stat-val balance-positive">${fmtAmount(wagesIn)}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Allocated out</div>
-        <div class="stat-val balance-negative">${fmtAmount(Math.abs(totalOut))}</div>
+        <div class="stat-label">Spent</div>
+        <div class="stat-val balance-negative">${fmtAmount(Math.abs(actualSpend))}</div>
       </div>
     </div>` : '';
 
