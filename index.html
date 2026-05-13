@@ -258,20 +258,23 @@
 
     /* ── Cycle stats ── */
     .cycle-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .stat-card {
       background: var(--card);
-      border-radius: var(--radius-sm);
-      padding: 12px;
+      border-radius: var(--radius);
       box-shadow: var(--shadow);
-      text-align: center;
+      margin-bottom: 10px;
+      overflow: hidden;
     }
-    .stat-card .stat-label { font-size: 10px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.6px; }
-    .stat-card .stat-val { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-top: 4px; }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row.divider { border-top: 2px solid var(--border); }
+    .stat-row-label { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    .stat-row-val { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
 
     /* ── Period category breakdown ── */
     .period-cat {
@@ -664,8 +667,26 @@ function renderHistoryTab() {
 
   const wagesIn      = txns.filter(t => t.category.toLowerCase() === 'wages' && t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const savingsAlloc = txns.filter(t => SAVINGS_CATS.includes(t.category.toLowerCase()) && t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const spendAlloc   = txns.filter(t => SPENDING_CATS.includes(t.category.toLowerCase()) && t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const actualSpend  = txns.filter(t => t.category.toLowerCase() !== 'wages' && t.amount < 0).reduce((s, t) => s + t.amount, 0);
+
+  // Split spending allocations: portion covering a negative balance = debt repayment, rest = to spending
+  const spendCatTotals = {};
+  txns.filter(t => SPENDING_CATS.includes(t.category.toLowerCase()) && t.amount > 0).forEach(t => {
+    spendCatTotals[t.category] = (spendCatTotals[t.category] || 0) + t.amount;
+  });
+  let toSpending = 0, toDebtRepayment = 0;
+  Object.entries(spendCatTotals).forEach(([cat, allocated]) => {
+    const summary = state.summary.find(s => s.category === cat);
+    const currentBalance = summary ? summary.balance : 0;
+    const balanceBefore = currentBalance - allocated;
+    if (balanceBefore < 0) {
+      const debtCovered = Math.min(allocated, Math.abs(balanceBefore));
+      toDebtRepayment += debtCovered;
+      toSpending += allocated - debtCovered;
+    } else {
+      toSpending += allocated;
+    }
+  });
 
   // Per-category allocation breakdown for this period
   const catAllocMap = {};
@@ -702,21 +723,26 @@ function renderHistoryTab() {
 
   const statsHtml = wagesIn ? `
     <div class="cycle-stats">
-      <div class="stat-card">
-        <div class="stat-label">Wages in</div>
-        <div class="stat-val balance-positive">${fmtAmount(wagesIn)}</div>
+      <div class="stat-row">
+        <span class="stat-row-label">Wages in</span>
+        <span class="stat-row-val balance-positive">${fmtAmount(wagesIn)}</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Spent</div>
-        <div class="stat-val ${actualSpend < 0 ? 'balance-negative' : 'balance-zero'}">${fmtAmount(Math.abs(actualSpend))}</div>
+      <div class="stat-row">
+        <span class="stat-row-label">To savings</span>
+        <span class="stat-row-val">${fmtAmount(savingsAlloc)}</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">To savings</div>
-        <div class="stat-val balance-positive">${fmtAmount(savingsAlloc)}</div>
+      <div class="stat-row">
+        <span class="stat-row-label">To spending</span>
+        <span class="stat-row-val">${fmtAmount(toSpending)}</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">To spending</div>
-        <div class="stat-val balance-positive">${fmtAmount(spendAlloc)}</div>
+      ${toDebtRepayment > 0 ? `
+      <div class="stat-row">
+        <span class="stat-row-label">Covering debt</span>
+        <span class="stat-row-val balance-amber">${fmtAmount(toDebtRepayment)}</span>
+      </div>` : ''}
+      <div class="stat-row divider">
+        <span class="stat-row-label">Spent from pots</span>
+        <span class="stat-row-val ${actualSpend < 0 ? 'balance-negative' : 'balance-zero'}">${fmtAmount(Math.abs(actualSpend))}</span>
       </div>
     </div>` : '';
 
